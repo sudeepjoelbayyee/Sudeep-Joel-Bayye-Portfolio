@@ -1,16 +1,14 @@
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-import path from "node:path";
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import netlify from "@netlify/vite-plugin-tanstack-start";
 
 export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+  nitro: false,
+
+  tanstackStart: {
+    server: { entry: "server" },
   },
-  resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+
+  vite: {
+    plugins: [netlify()],
   },
 });
