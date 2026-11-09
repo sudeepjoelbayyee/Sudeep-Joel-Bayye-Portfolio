@@ -1,7 +1,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Film, Play, X } from "lucide-react";
 
 import {
@@ -40,37 +40,19 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — thumbnail-first, load only on interaction
+   VIDEO PREVIEW — thumbnail-first, no network video request
 ------------------------------------------------------- */
 
-function VideoPreview({
-  src,
-  poster,
-  isActive,
-}: {
-  src: string;
-  poster: string;
-  isActive: boolean;
-}) {
+function VideoPreview({ poster }: { poster: string }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-graphite">
       <img
         src={poster}
         alt=""
         loading="lazy"
-        className="absolute inset-0 z-0 h-full w-full object-cover"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover"
       />
-      {isActive && (
-        <video
-          src={src}
-          poster={poster}
-          controls
-          autoPlay
-          playsInline
-          preload="none"
-          className="absolute inset-0 z-20 h-full w-full object-cover"
-        />
-      )}
     </div>
   );
 }
@@ -185,11 +167,7 @@ function WorkCard({
 
           {/* Video or thumbnail */}
           {directVideo && item.videoUrl ? (
-            <VideoPreview
-              src={item.videoUrl}
-              poster={item.thumbnail}
-              isActive={isActive}
-            />
+            <VideoPreview poster={item.thumbnail} />
           ) : item.videoUrl && isActive ? (
   <iframe
     key={`${item.id}-${isActive}`}
@@ -240,7 +218,7 @@ function WorkCard({
                   </span>
 
                   <span className="shrink-0 rounded-full border border-white/15 bg-black/30 px-2 py-1 font-mono text-[7px] uppercase tracking-wider text-white/70 backdrop-blur-md md:text-[8px]">
-                    {hasVideo ? "HOVER TO PLAY" : "PROJECT"}
+                    {hasVideo ? "CLICK TO PLAY" : "PROJECT"}
                   </span>
                 </div>
 
@@ -387,6 +365,7 @@ function VideoModal({
                           autoPlay
                           muted
                           playsInline
+                          preload="none"
                           className="absolute inset-0 h-full w-full object-contain"
                         />
                       ) : (
