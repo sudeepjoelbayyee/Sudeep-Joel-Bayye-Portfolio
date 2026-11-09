@@ -9,3 +9,6 @@ node_modules/
 .output/
 dist/
 
+
+# Locally retained source videos (not committed after the R2 cutover)
+public/videos/
