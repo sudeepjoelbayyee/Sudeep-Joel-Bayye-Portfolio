@@ -152,8 +152,8 @@ function GlassRing() {
         <mesh>
           <torusGeometry args={[0.85, 0.22, 64, 128]} />
           <MeshTransmissionMaterial
-            samples={4}
-            resolution={256}
+            samples={2}
+            resolution={128}
             thickness={0.8}
             roughness={0.06}
             chromaticAberration={0.04}
@@ -169,14 +169,16 @@ function GlassRing() {
 export default function HeroScene({
   reduced,
   mobile,
+  isVisible,
 }: {
   reduced: boolean;
   mobile: boolean;
+  isVisible: boolean;
 }) {
   return (
     <Canvas
-      dpr={mobile ? [1, 1.25] : [1, 1.6]}
-      frameloop={reduced ? "demand" : "always"}
+      dpr={mobile ? 1 : [1, 1.3]}
+      frameloop={reduced || !isVisible ? "demand" : "always"}
       camera={{ position: [0, 0, 7], fov: 42 }}
       gl={{
         antialias: true,
@@ -200,7 +202,7 @@ export default function HeroScene({
       </Rig>
 
       {/* Premium studio reflections */}
-      <Environment resolution={256} frames={1}>
+      <Environment resolution={128} frames={1}>
         <group rotation={[-Math.PI / 3, 0, 1]}>
           <Lightformer
             form="circle"

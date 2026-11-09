@@ -30,7 +30,7 @@ function getAutoplayUrl(url: string, controls = 0) {
   const embedUrl = new URL(url);
 
   embedUrl.searchParams.set("autoplay", "1");
-  embedUrl.searchParams.set("mute", "0");
+  embedUrl.searchParams.set("mute", controls === 0 ? "1" : "0");
   embedUrl.searchParams.set("playsinline", "1");
   embedUrl.searchParams.set("controls", String(controls));
   embedUrl.searchParams.set("rel", "0");
@@ -40,7 +40,8 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — 5 FPS IDLE + FULL PLAYBACK ON HOVER
+   VIDEO PREVIEW — STATIC THUMBNAIL + SOUND-ON-HOVER PLAYBACK
+   The video mounts only while the card is in view and hovered.
 ------------------------------------------------------- */
 
 function VideoPreview({
@@ -52,15 +53,14 @@ function VideoPreview({
   poster: string;
   isActive: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInView, setIsInView] = useState(false);
 
-  // Detect whether the video is near the viewport.
+  // Observe the card so preview video is not mounted far outside the viewport.
   useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     if (typeof IntersectionObserver === "undefined") {
       setIsInView(true);
@@ -72,152 +72,82 @@ function VideoPreview({
       { rootMargin: "150px" },
     );
 
-    observer.observe(video);
-
+    observer.observe(container);
     return () => observer.disconnect();
   }, []);
 
-  // Idle: muted preview.
-  // Hover: restart from 00:00 and attempt unmuted playback.
+  // Start with audio when the visitor hovers over the card. If the browser
+  // blocks audible autoplay, retry muted so the visual preview still works.
   useEffect(() => {
     const video = videoRef.current;
-
-    if (!video) return;
+    if (!video || !isInView || !isActive) return;
 
     let cancelled = false;
 
     const startPlayback = async () => {
       if (cancelled) return;
 
-      video.pause();
+      video.muted = false;
+      video.volume = 1;
 
       try {
         video.currentTime = 0;
       } catch {
-        // Wait for metadata if seeking is not yet available.
-      }
-
-      video.muted = !isActive;
-
-      if (isActive) {
-        video.volume = 1;
+        // Metadata may not be ready for seeking yet.
       }
 
       try {
         await video.play();
       } catch {
-        // Some browsers block autoplay with audio.
         if (cancelled) return;
 
-        if (isActive) {
-          video.muted = true;
-
-          try {
-            await video.play();
-          } catch {
-            // Playback can still be blocked by the browser.
-          }
+        video.muted = true;
+        try {
+          await video.play();
+        } catch {
+          // Browser policy or network conditions may still block playback.
         }
       }
     };
 
-    if (!isInView) {
-      video.pause();
-    } else if (video.readyState >= 1) {
+    if (video.readyState >= 1) {
       void startPlayback();
     } else {
-      video.addEventListener(
-        "loadedmetadata",
-        startPlayback,
-        { once: true },
-      );
+      video.addEventListener("loadedmetadata", startPlayback, { once: true });
     }
 
     return () => {
       cancelled = true;
-
-      video.removeEventListener(
-        "loadedmetadata",
-        startPlayback,
-      );
+      video.removeEventListener("loadedmetadata", startPlayback);
+      video.pause();
+      video.muted = true;
     };
   }, [isInView, isActive, src]);
 
-  // Draw preview frames at 5 FPS while idle.
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    if (!video || !canvas || !isInView || isActive) return;
-
-    const context = canvas.getContext("2d");
-
-    if (!context) return;
-
-    const drawFrame = () => {
-      if (video.readyState < 2) return;
-      if (!video.videoWidth || !video.videoHeight) return;
-
-      const scale = Math.min(1, 640 / video.videoWidth);
-      const width = Math.round(video.videoWidth * scale);
-      const height = Math.round(video.videoHeight * scale);
-
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-
-      context.drawImage(video, 0, 0, width, height);
-    };
-
-    video.addEventListener("loadeddata", drawFrame);
-
-    drawFrame();
-
-    // 200 milliseconds = 5 frames per second.
-    const interval = window.setInterval(drawFrame, 200);
-
-    return () => {
-      video.removeEventListener("loadeddata", drawFrame);
-      window.clearInterval(interval);
-    };
-  }, [src, isInView, isActive]);
-
   return (
-    <div className="absolute inset-0 overflow-hidden bg-graphite">
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-graphite">
       <img
         src={poster}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="absolute inset-0 z-0 h-full w-full object-cover"
       />
 
-      {/* Full-quality video on hover */}
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        className={cn(
-          "absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-200",
-          isActive ? "opacity-100" : "opacity-0",
-        )}
-      />
-
-      {/* 5 FPS canvas preview while idle */}
-      <canvas
-        ref={canvasRef}
-        className={cn(
-          "absolute inset-0 z-10 h-full w-full object-cover",
-          isActive ? "opacity-0" : "opacity-100",
-        )}
-      />
+      {isInView && isActive && (
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          loop
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 z-20 h-full w-full object-cover"
+        />
+      )}
     </div>
   );
 }
-
 
 /* -------------------------------------------------------
    WORK CARD
@@ -238,7 +168,6 @@ function WorkCard({
 }) {
   const hasVideo = Boolean(item.videoUrl);
   const isVertical = item.aspect === "9:16";
-
   const directVideo = item.videoUrl
     ? isDirectVideoFile(item.videoUrl)
     : false;
@@ -384,7 +313,7 @@ function WorkCard({
                   </span>
 
                   <span className="shrink-0 rounded-full border border-white/15 bg-black/30 px-2 py-1 font-mono text-[7px] uppercase tracking-wider text-white/70 backdrop-blur-md md:text-[8px]">
-                    {hasVideo ? "HOVER TO PLAY" : "PROJECT"}
+                    {directVideo ? "CLICK TO PLAY" : hasVideo ? "HOVER TO PLAY" : "PROJECT"}
                   </span>
                 </div>
 
@@ -429,6 +358,7 @@ function WorkCard({
 
         </div>
       </button>
+
     </motion.li>
   );
 }
@@ -529,8 +459,8 @@ function VideoModal({
                           src={item.videoUrl}
                           controls
                           autoPlay
-                          muted
                           playsInline
+                          preload="none"
                           className="absolute inset-0 h-full w-full object-contain"
                         />
                       ) : (

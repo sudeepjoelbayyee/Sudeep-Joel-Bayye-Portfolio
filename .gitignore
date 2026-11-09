@@ -1,1 +1,18 @@
-node_modules
+node_modules/
+
+# Local environment files (keep the safe example template)
+.env
+.env.*
+!.env.example
+
+# Generated build output
+.output/
+dist/
+
+
+# Locally retained source videos (not committed after the R2 cutover)
+public/videos/
+public/thumbnails/
+
+# Local Netlify folder
+.netlify
