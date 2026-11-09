@@ -12,3 +12,4 @@ dist/
 
 # Locally retained source videos (not committed after the R2 cutover)
 public/videos/
+public/thumbnails/
