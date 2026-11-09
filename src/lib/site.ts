@@ -151,8 +151,8 @@ function createProjects({
     aspect,
     // Use the matching still frame from R2, with the local public folder as fallback.
     thumbnail: videoBaseUrl
-      ? `${videoBaseUrl}/thumbnails/${filename.replace(/\.mp4$/i, ".jpg")}`
-      : `/thumbnails/${filename.replace(/\.mp4$/i, ".jpg")}`,
+      ? `${videoBaseUrl}/thumbnails/${filename.replace(/\.mp4$/i, ".png")}`
+      : `/thumbnails/${filename.replace(/\.mp4$/i, ".png")}`,
     // Keep local fallback for development until the R2 public URL is configured.
     videoUrl: videoBaseUrl
       ? `${videoBaseUrl}/videos/${filename}`
