@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
-import { Film, Play, Volume2, VolumeX, X } from "lucide-react";
+import { Film, Play, X } from "lucide-react";
 
 import {
   workItems,
@@ -40,7 +40,7 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — STATIC THUMBNAIL + MUTED HOVER PLAYBACK
+   VIDEO PREVIEW — STATIC THUMBNAIL + SOUND-ON-HOVER PLAYBACK
    The video mounts only while the card is in view and hovered.
 ------------------------------------------------------- */
 
@@ -48,14 +48,13 @@ function VideoPreview({
   src,
   poster,
   isActive,
-  videoRef,
 }: {
   src: string;
   poster: string;
   isActive: boolean;
-  videoRef: { current: HTMLVideoElement | null };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isInView, setIsInView] = useState(false);
 
   // Observe the card so preview video is not mounted far outside the viewport.
@@ -77,30 +76,53 @@ function VideoPreview({
     return () => observer.disconnect();
   }, []);
 
-  // Hover playback is muted by default. Sound is enabled only by the
-  // dedicated sound button, which is a direct user interaction.
+  // Start with audio when the visitor hovers over the card. If the browser
+  // blocks audible autoplay, retry muted so the visual preview still works.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !isInView || !isActive) return;
 
-    video.muted = true;
-    video.volume = 1;
+    let cancelled = false;
 
-    try {
-      video.currentTime = 0;
-    } catch {
-      // The browser may not have loaded enough metadata to seek yet.
+    const startPlayback = async () => {
+      if (cancelled) return;
+
+      video.muted = false;
+      video.volume = 1;
+
+      try {
+        video.currentTime = 0;
+      } catch {
+        // Metadata may not be ready for seeking yet.
+      }
+
+      try {
+        await video.play();
+      } catch {
+        if (cancelled) return;
+
+        video.muted = true;
+        try {
+          await video.play();
+        } catch {
+          // Browser policy or network conditions may still block playback.
+        }
+      }
+    };
+
+    if (video.readyState >= 1) {
+      void startPlayback();
+    } else {
+      video.addEventListener("loadedmetadata", startPlayback, { once: true });
     }
 
-    void video.play().catch(() => {
-      // Keep the still thumbnail visible if autoplay is unavailable.
-    });
-
     return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", startPlayback);
       video.pause();
       video.muted = true;
     };
-  }, [isInView, isActive, src, videoRef]);
+  }, [isInView, isActive, src]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-graphite">
@@ -117,10 +139,9 @@ function VideoPreview({
           ref={videoRef}
           key={src}
           src={src}
-          muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           className="absolute inset-0 z-20 h-full w-full object-cover"
         />
       )}
@@ -147,38 +168,6 @@ function WorkCard({
 }) {
   const hasVideo = Boolean(item.videoUrl);
   const isVertical = item.aspect === "9:16";
-  const previewVideoRef = useRef<HTMLVideoElement>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-
-  const togglePreviewSound = async () => {
-    const video = previewVideoRef.current;
-    if (!video) return;
-
-    if (soundEnabled) {
-      video.muted = true;
-      setSoundEnabled(false);
-      return;
-    }
-
-    // This runs directly from the visitor's click, allowing the browser
-    // to grant audio playback where its autoplay policy permits it.
-    video.muted = false;
-    video.volume = 1;
-
-    try {
-      await video.play();
-      setSoundEnabled(true);
-    } catch {
-      video.muted = true;
-      setSoundEnabled(false);
-    }
-  };
-
-  const handleLeave = () => {
-    setSoundEnabled(false);
-    onLeave();
-  };
-
   const directVideo = item.videoUrl
     ? isDirectVideoFile(item.videoUrl)
     : false;
@@ -239,7 +228,7 @@ function WorkCard({
         isActive ? "z-10" : "z-0",
       )}
       onMouseEnter={onHover}
-      onMouseLeave={handleLeave}
+      onMouseLeave={onLeave}
       onFocusCapture={onHover}
       onBlurCapture={(event) => {
         const nextTarget = event.relatedTarget as Node | null;
@@ -248,7 +237,7 @@ function WorkCard({
           !nextTarget ||
           !event.currentTarget.contains(nextTarget)
         ) {
-          handleLeave();
+          onLeave();
         }
       }}
     >
@@ -273,7 +262,6 @@ function WorkCard({
               src={item.videoUrl}
               poster={item.thumbnail}
               isActive={isActive}
-              videoRef={previewVideoRef}
             />
           ) : item.videoUrl && isActive ? (
   <iframe
@@ -371,25 +359,6 @@ function WorkCard({
         </div>
       </button>
 
-      {/* Separate sound control: it never triggers the card's modal button. */}
-      {directVideo && isActive && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            void togglePreviewSound();
-          }}
-          aria-label={soundEnabled ? "Turn preview sound off" : "Turn preview sound on"}
-          title={soundEnabled ? "Mute preview" : "Enable preview sound"}
-          className="absolute right-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75"
-        >
-          {soundEnabled ? (
-            <Volume2 className="h-4 w-4" />
-          ) : (
-            <VolumeX className="h-4 w-4" />
-          )}
-        </button>
-      )}
     </motion.li>
   );
 }
