@@ -1,6 +1,6 @@
 import { ClientOnly } from "@tanstack/react-router";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Instagram, Mail, Youtube } from "lucide-react";
 import { site, youtubeHref } from "@/lib/site";
 import { scrollToId } from "@/lib/scroll";
@@ -12,25 +12,55 @@ const HeroScene = lazy(() => import("./HeroScene"));
 
 function Scene() {
   const reduce = useReducedMotion() ?? false;
+  const containerRef = useRef<HTMLDivElement>(null);
   const [mobile, setMobile] = useState(false);
   const [ready, setReady] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
     setMobile(window.matchMedia("(max-width: 767px)").matches);
-    // Let the hero text paint first, then bring in the 3D layer.
-    const id = window.setTimeout(() => setReady(true), 400);
+
+    // Let the hero text and portrait render before downloading the 3D scene.
+    const id = window.setTimeout(() => setReady(true), 1000);
     return () => window.clearTimeout(id);
   }, []);
-  if (!ready) return null;
+
+  // Stop the 3D render loop while the hero is outside the viewport.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: "100px" },
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <motion.div
+      ref={containerRef}
       className="absolute inset-0"
       initial={{ opacity: 0, scale: 1.08 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 2.4, delay: 1.2, ease: easeOutExpo }}
     >
-      <Suspense fallback={null}>
-        <HeroScene reduced={reduce} mobile={mobile} />
-      </Suspense>
+      {ready && (
+        <Suspense fallback={null}>
+          <HeroScene
+            reduced={reduce}
+            mobile={mobile}
+            isVisible={isVisible}
+          />
+        </Suspense>
+      )}
     </motion.div>
   );
 }
