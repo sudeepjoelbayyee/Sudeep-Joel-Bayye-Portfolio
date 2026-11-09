@@ -40,7 +40,7 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — 5 FPS IDLE + FULL PLAYBACK ON HOVER
+   VIDEO PREVIEW — thumbnail-first, load only on interaction
 ------------------------------------------------------- */
 
 function VideoPreview({
@@ -52,172 +52,28 @@ function VideoPreview({
   poster: string;
   isActive: boolean;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isInView, setIsInView] = useState(false);
-
-  // Detect whether the video is near the viewport.
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) return;
-
-    if (typeof IntersectionObserver === "undefined") {
-      setIsInView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsInView(entry.isIntersecting),
-      { rootMargin: "150px" },
-    );
-
-    observer.observe(video);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Idle: muted preview.
-  // Hover: restart from 00:00 and attempt unmuted playback.
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) return;
-
-    let cancelled = false;
-
-    const startPlayback = async () => {
-      if (cancelled) return;
-
-      video.pause();
-
-      try {
-        video.currentTime = 0;
-      } catch {
-        // Wait for metadata if seeking is not yet available.
-      }
-
-      video.muted = !isActive;
-
-      if (isActive) {
-        video.volume = 1;
-      }
-
-      try {
-        await video.play();
-      } catch {
-        // Some browsers block autoplay with audio.
-        if (cancelled) return;
-
-        if (isActive) {
-          video.muted = true;
-
-          try {
-            await video.play();
-          } catch {
-            // Playback can still be blocked by the browser.
-          }
-        }
-      }
-    };
-
-    if (!isInView) {
-      video.pause();
-    } else if (video.readyState >= 1) {
-      void startPlayback();
-    } else {
-      video.addEventListener(
-        "loadedmetadata",
-        startPlayback,
-        { once: true },
-      );
-    }
-
-    return () => {
-      cancelled = true;
-
-      video.removeEventListener(
-        "loadedmetadata",
-        startPlayback,
-      );
-    };
-  }, [isInView, isActive, src]);
-
-  // Draw preview frames at 5 FPS while idle.
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    if (!video || !canvas || !isInView || isActive) return;
-
-    const context = canvas.getContext("2d");
-
-    if (!context) return;
-
-    const drawFrame = () => {
-      if (video.readyState < 2) return;
-      if (!video.videoWidth || !video.videoHeight) return;
-
-      const scale = Math.min(1, 640 / video.videoWidth);
-      const width = Math.round(video.videoWidth * scale);
-      const height = Math.round(video.videoHeight * scale);
-
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-
-      context.drawImage(video, 0, 0, width, height);
-    };
-
-    video.addEventListener("loadeddata", drawFrame);
-
-    drawFrame();
-
-    // 200 milliseconds = 5 frames per second.
-    const interval = window.setInterval(drawFrame, 200);
-
-    return () => {
-      video.removeEventListener("loadeddata", drawFrame);
-      window.clearInterval(interval);
-    };
-  }, [src, isInView, isActive]);
-
   return (
     <div className="absolute inset-0 overflow-hidden bg-graphite">
       <img
         src={poster}
         alt=""
+        loading="lazy"
         className="absolute inset-0 z-0 h-full w-full object-cover"
       />
-
-      {/* Full-quality video on hover */}
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        className={cn(
-          "absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-200",
-          isActive ? "opacity-100" : "opacity-0",
-        )}
-      />
-
-      {/* 5 FPS canvas preview while idle */}
-      <canvas
-        ref={canvasRef}
-        className={cn(
-          "absolute inset-0 z-10 h-full w-full object-cover",
-          isActive ? "opacity-0" : "opacity-100",
-        )}
-      />
+      {isActive && (
+        <video
+          src={src}
+          poster={poster}
+          controls
+          autoPlay
+          playsInline
+          preload="none"
+          className="absolute inset-0 z-20 h-full w-full object-cover"
+        />
+      )}
     </div>
   );
 }
-
 
 /* -------------------------------------------------------
    WORK CARD
