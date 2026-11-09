@@ -55,29 +55,31 @@ hostname with the exact deployed portfolio origin. Keep localhost for local
 development.
 
 ```json
-{
-  "rules": [
-    {
-      "allowed": {
-        "origins": [
-          "https://YOUR-SITE.netlify.app",
-          "http://localhost:5173"
-        ],
-        "methods": ["GET", "HEAD"],
-        "headers": ["Range"]
-      },
-      "exposeHeaders": [
-        "Accept-Ranges",
-        "Content-Length",
-        "Content-Range",
-        "Content-Type",
-        "ETag"
-      ],
-      "maxAgeSeconds": 3600
-    }
-  ]
-}
+[
+  {
+    "AllowedOrigins": [
+      "https://YOUR-SITE.netlify.app",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["Range"],
+    "ExposeHeaders": [
+      "Accept-Ranges",
+      "Content-Length",
+      "Content-Range",
+      "Content-Type",
+      "ETag"
+    ],
+    "MaxAgeSeconds": 3600
+  }
+]
 ```
+
+This is the JSON format used by the R2 dashboard CORS editor. Add your exact
+production portfolio origin (and any custom portfolio domain) to
+`AllowedOrigins`. Origins must contain only scheme + hostname + optional
+port, with no trailing slash or path. If the browser reports a CORS error,
+check the blocked request's Origin and request headers in DevTools.
 
 If you use a custom portfolio domain, add that exact origin too. An origin is
 only scheme + hostname (+ optional port), with no path and no trailing slash.
