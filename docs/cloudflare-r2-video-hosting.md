@@ -56,7 +56,7 @@ no `/videos` suffix). The app appends `/videos/<filename>` automatically.
 1. Open Cloudflare Dashboard -> Storage & databases -> R2.
 2. Create a bucket, for example `portfolio-videos`.
 3. Keep the bucket in the Standard storage class.
-4. Create a `videos/` prefix (folder) in the bucket.
+4. Create both `videos/` and `thumbnails/` prefixes (folders) in the bucket.
 
 ## 2. Upload the original video files
 
