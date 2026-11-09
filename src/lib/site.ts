@@ -1,9 +1,4 @@
 
-import trailerImg from "@/assets/placeholder-trailer.jpg";
-import motionImg from "@/assets/placeholder-motion.jpg";
-import realEstateImg from "@/assets/placeholder-realestate.jpg";
-import verticalImg from "@/assets/placeholder-vertical.jpg";
-import vfxImg from "@/assets/placeholder-vfx.jpg";
 
 /* -------------------------------------------------------
    SITE INFORMATION
@@ -135,7 +130,6 @@ function createProjects({
   category,
   description,
   aspect,
-  thumbnail,
   filenames,
   tags,
 }: {
@@ -144,7 +138,6 @@ function createProjects({
   category: WorkCategory;
   description: string;
   aspect: "16:9" | "9:16";
-  thumbnail: string;
   filenames: string[];
   tags: string[];
 }): WorkItem[] {
@@ -156,7 +149,10 @@ function createProjects({
     category,
     description,
     aspect,
-    thumbnail,
+    // Use the matching still frame from R2, with the local public folder as fallback.
+    thumbnail: videoBaseUrl
+      ? `${videoBaseUrl}/thumbnails/${filename.replace(/\.mp4$/i, ".jpg")}`
+      : `/thumbnails/${filename.replace(/\.mp4$/i, ".jpg")}`,
     // Keep local fallback for development until the R2 public URL is configured.
     videoUrl: videoBaseUrl
       ? `${videoBaseUrl}/videos/${filename}`
@@ -178,7 +174,6 @@ export const workItems: WorkItem[] = [
     category: "Student Tribe — Reels",
     description: "Short-form video editing for Student Tribe.",
     aspect: "9:16",
-    thumbnail: verticalImg,
     filenames: [
       "st-reel-1.mp4",
       "st-reel-2.mp4",
@@ -195,7 +190,6 @@ export const workItems: WorkItem[] = [
     category: "Student Tribe — Long-form",
     description: "Long-form video editing for Student Tribe.",
     aspect: "16:9",
-    thumbnail: trailerImg,
     filenames: [
       "st-long-1.mp4",
       "st-long-2.mp4",
@@ -212,7 +206,6 @@ export const workItems: WorkItem[] = [
     category: "Honest Townhall — Reels",
     description: "Short-form content editing for Honest Townhall.",
     aspect: "9:16",
-    thumbnail: verticalImg,
     filenames: [
       "ht-reel-1.mp4",
       "ht-reel-2.mp4",
@@ -230,7 +223,6 @@ export const workItems: WorkItem[] = [
     description:
       "Cinematic trailers and motion graphics for Honest Townhall.",
     aspect: "16:9",
-    thumbnail: motionImg,
     filenames: [
       "ht-trailer-1.mp4",
       "ht-trailer-2.mp4",
@@ -248,7 +240,6 @@ export const workItems: WorkItem[] = [
     description:
       "Christian short-form video editing for Joel's Gospel Inspirations.",
     aspect: "9:16",
-    thumbnail: verticalImg,
     filenames: [
       "jgi-short-1.mp4",
       "jgi-short-2.mp4",
@@ -304,7 +295,6 @@ export const workItems: WorkItem[] = [
     description:
       "Cinematic promotional trailers for Hustle Tribe.",
     aspect: "16:9",
-    thumbnail: trailerImg,
     filenames: [
       "hustle-tribe-trailer-1.mp4",
       "hustle-tribe-trailer-2.mp4",
@@ -322,7 +312,6 @@ export const workItems: WorkItem[] = [
     description:
       "Real estate video editing and property presentation.",
     aspect: "9:16",
-    thumbnail: realEstateImg,
     filenames: [
       "realestate-1.mp4",
       "realestate-2.mp4",
@@ -340,7 +329,6 @@ export const workItems: WorkItem[] = [
     description:
       "Personal visual effects, compositing and creative experiments.",
     aspect: "16:9",
-    thumbnail: vfxImg,
     filenames: [
       "vfx-1.mp4",
       "vfx-2.mp4",
