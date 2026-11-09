@@ -1,7 +1,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Film, Play, X } from "lucide-react";
 
 import {
@@ -40,7 +40,8 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — thumbnail-first, no network video request
+   VIDEO PREVIEW — 5 FPS IDLE + FULL PLAYBACK ON HOVER
+   Only mounts the video when the card is near the viewport.
 ------------------------------------------------------- */
 
 function VideoPreview({
@@ -52,30 +53,153 @@ function VideoPreview({
   poster: string;
   isActive: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isInView, setIsInView] = useState(false);
+
+  // Load the video only when the card is near the viewport.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { rootMargin: "150px" },
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Idle playback stays muted. On hover, attempt to unmute the same
+  // playing video; if the browser blocks audio autoplay, fall back muted.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isInView) return;
+
+    let cancelled = false;
+
+    const startPlayback = async () => {
+      if (cancelled) return;
+
+      video.pause();
+
+      try {
+        video.currentTime = 0;
+      } catch {
+        // Metadata may not be ready for seeking yet.
+      }
+
+      video.muted = !isActive;
+
+      if (isActive) {
+        video.volume = 1;
+      }
+
+      try {
+        await video.play();
+      } catch {
+        if (cancelled) return;
+
+        if (isActive) {
+          video.muted = true;
+          try {
+            await video.play();
+          } catch {
+            // Browser policy or network conditions may still block playback.
+          }
+        }
+      }
+    };
+
+    if (video.readyState >= 1) {
+      void startPlayback();
+    } else {
+      video.addEventListener("loadedmetadata", startPlayback, { once: true });
+    }
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", startPlayback);
+    };
+  }, [isInView, isActive, src]);
+
+  // Draw idle preview frames at 5 FPS (one frame every 200 milliseconds).
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !isInView || isActive) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const drawFrame = () => {
+      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+
+      const scale = Math.min(1, 640 / video.videoWidth);
+      const width = Math.round(video.videoWidth * scale);
+      const height = Math.round(video.videoHeight * scale);
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      context.drawImage(video, 0, 0, width, height);
+    };
+
+    video.addEventListener("loadeddata", drawFrame);
+    drawFrame();
+
+    const interval = window.setInterval(drawFrame, 200);
+
+    return () => {
+      video.removeEventListener("loadeddata", drawFrame);
+      window.clearInterval(interval);
+    };
+  }, [src, isInView, isActive]);
+
   return (
-    <div className="absolute inset-0 overflow-hidden bg-graphite">
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-graphite">
       <img
         src={poster}
         alt=""
         loading="lazy"
         decoding="async"
-        className={cn(
-          "absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-200",
-          isActive ? "opacity-0" : "opacity-100",
-        )}
+        className="absolute inset-0 z-0 h-full w-full object-cover"
       />
-      {isActive && (
-        <video
-          key={src}
-          src={src}
-          poster={poster}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="absolute inset-0 z-20 h-full w-full object-cover"
-        />
+
+      {isInView && (
+        <>
+          <video
+            ref={videoRef}
+            key={src}
+            src={src}
+            poster={poster}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className={cn(
+              "absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-200",
+              isActive ? "opacity-100" : "opacity-0",
+            )}
+          />
+
+          <canvas
+            ref={canvasRef}
+            className={cn(
+              "absolute inset-0 z-10 h-full w-full object-cover",
+              isActive ? "opacity-0" : "opacity-100",
+            )}
+          />
+        </>
       )}
     </div>
   );
@@ -387,7 +511,6 @@ function VideoModal({
                           src={item.videoUrl}
                           controls
                           autoPlay
-                          muted
                           playsInline
                           preload="none"
                           className="absolute inset-0 h-full w-full object-contain"
