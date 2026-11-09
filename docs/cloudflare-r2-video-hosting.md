@@ -15,6 +15,36 @@ The app builds direct video URLs as:
 
 `<VITE_R2_PUBLIC_URL>/videos/<filename>`
 
+## Recommended zero-domain setup for this portfolio
+
+Keep the Netlify `*.netlify.app` address for the website. For the videos,
+start with the Cloudflare-managed `r2.dev` public development URL so you do
+not need to buy a domain just to deliver the portfolio media. This is a
+pragmatic initial setup for the expected small personal-portfolio audience,
+not a production reliability guarantee: Cloudflare applies variable request
+and throughput rate limits to `r2.dev` and recommends custom domains for
+production.
+
+Do not create a CNAME that points a separate free subdomain at the `r2.dev`
+hostname. Cloudflare documents that as unsupported. A proper R2 custom domain
+must be added as a zone in the same Cloudflare account as the bucket.
+
+To enable the initial public URL:
+
+1. Open the bucket in Cloudflare R2.
+2. Select **Settings**.
+3. Find **Public Development URL** and select **Enable**.
+4. Confirm public access by typing `allow`.
+5. Copy the public bucket URL shown by Cloudflare. It will resemble
+   `https://pub-<account-hash>.r2.dev`.
+
+The bucket is public after this step: anyone who has an object URL can access
+that object. This is expected for portfolio showcase videos, but do not store
+private or client-confidential media in this bucket.
+
+Set `VITE_R2_PUBLIC_URL` to the copied base URL only (no trailing slash and
+no `/videos` suffix). The app appends `/videos/<filename>` automatically.
+
 ## 1. Create the bucket
 
 1. Open Cloudflare Dashboard -> Storage & databases -> R2.
