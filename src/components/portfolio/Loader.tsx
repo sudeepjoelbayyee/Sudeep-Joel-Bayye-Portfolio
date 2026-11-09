@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, animate } from "motion/react";
 import { useEffect, useState } from "react";
 import { easeOutExpo } from "./primitives";
+import { site } from "@/lib/site";
 
 /** Short cinematic intro: a timecode counts up, then the frame wipes away. */
 export function Loader() {
@@ -37,7 +38,7 @@ export function Loader() {
           <div className="flex items-center gap-3 label-mono">
             <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" /> REC
           </div>
-          <div className="mt-6 font-serif text-6xl italic text-chrome md:text-8xl">SJB</div>
+          <div className="mt-6 whitespace-nowrap font-serif text-[clamp(1.5rem,6vw,4rem)] italic tracking-tight text-chrome">{site.name}</div>
           <div className="mt-8 h-px w-56 overflow-hidden bg-foreground/10">
             <div className="h-full bg-accent-gradient" style={{ width: `${frame}%` }} />
           </div>
