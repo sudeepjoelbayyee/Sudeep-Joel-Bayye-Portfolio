@@ -11,9 +11,15 @@ the `videos/` prefix, preserving each filename exactly. For example:
 
 `public/videos/st-reel-1.mp4` -> `videos/st-reel-1.mp4`
 
-The app builds direct video URLs as:
+The app builds direct video URLs and matching thumbnail URLs as:
 
 `<VITE_R2_PUBLIC_URL>/videos/<filename>`
+
+`<VITE_R2_PUBLIC_URL>/thumbnails/<matching-filename>.jpg`
+
+For example, `st-reel-1.mp4` uses `thumbnails/st-reel-1.jpg`. Keep the
+thumbnail filenames aligned with the video filenames; only the extension
+changes from `.mp4` to `.jpg`.
 
 ## Recommended zero-domain setup for this portfolio
 
@@ -58,14 +64,25 @@ Upload all 24 original MP4 files from your local `public/videos/` folder into
 the R2 `videos/` prefix. You can drag and drop the files into the Cloudflare
 R2 dashboard.
 
+Also upload the corresponding JPG still frames from your local
+`public/thumbnails/` folder into the R2 `thumbnails/` prefix, preserving
+the matching filenames. For example:
+
+`public/thumbnails/st-reel-1.jpg` -> `thumbnails/st-reel-1.jpg`
+
+The portfolio uses these still images for idle cards. It plays the MP4 only
+when a card is hovered, instead of continuously drawing idle frames.
+
 Important: this Git repository tracks MP4s using Git LFS. GitHub's normal file
 view may show small Git LFS pointer text files rather than the actual video
 contents. Upload the real local MP4 files, not 132-byte Git LFS pointer files.
 If the local files are pointers, run `git lfs pull` in the project first and
 confirm their sizes before uploading.
 
-Do not remove `public/videos/` yet. Keep it as the local development fallback
+Do not remove your local `public/videos/` or `public/thumbnails/` copies
 until every R2 object has been checked and the deployed site plays correctly.
+Both local asset folders are ignored by Git and can remain in your workspace
+as development fallbacks.
 
 ## 3. Enable public read access
 
@@ -133,9 +150,11 @@ never be committed.
 
 ## 6. Verify before cleanup
 
-Test a known object URL directly, for example:
+Test a known MP4 and matching thumbnail URL directly, for example:
 
 `https://media.yourdomain.com/videos/st-reel-1.mp4`
+
+`https://media.yourdomain.com/thumbnails/st-reel-1.jpg`
 
 Then open the portfolio and test several MP4s, including vertical and
 horizontal videos, plus all three YouTube embeds. Confirm playback on desktop
