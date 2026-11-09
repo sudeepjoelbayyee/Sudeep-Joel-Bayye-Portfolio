@@ -15,11 +15,11 @@ The app builds direct video URLs and matching thumbnail URLs as:
 
 `<VITE_R2_PUBLIC_URL>/videos/<filename>`
 
-`<VITE_R2_PUBLIC_URL>/thumbnails/<matching-filename>.jpg`
+`<VITE_R2_PUBLIC_URL>/thumbnails/<matching-filename>.png`
 
-For example, `st-reel-1.mp4` uses `thumbnails/st-reel-1.jpg`. Keep the
+For example, `st-reel-1.mp4` uses `thumbnails/st-reel-1.png`. Keep the
 thumbnail filenames aligned with the video filenames; only the extension
-changes from `.mp4` to `.jpg`.
+changes from `.mp4` to `.png`.
 
 ## Recommended zero-domain setup for this portfolio
 
@@ -64,11 +64,11 @@ Upload all 24 original MP4 files from your local `public/videos/` folder into
 the R2 `videos/` prefix. You can drag and drop the files into the Cloudflare
 R2 dashboard.
 
-Also upload the corresponding JPG still frames from your local
+Also upload the corresponding PNG still frames from your local
 `public/thumbnails/` folder into the R2 `thumbnails/` prefix, preserving
 the matching filenames. For example:
 
-`public/thumbnails/st-reel-1.jpg` -> `thumbnails/st-reel-1.jpg`
+`public/thumbnails/st-reel-1.png` -> `thumbnails/st-reel-1.png`
 
 The portfolio uses these still images for idle cards. It plays the MP4 only
 when a card is hovered, instead of continuously drawing idle frames.
@@ -154,7 +154,7 @@ Test a known MP4 and matching thumbnail URL directly, for example:
 
 `https://media.yourdomain.com/videos/st-reel-1.mp4`
 
-`https://media.yourdomain.com/thumbnails/st-reel-1.jpg`
+`https://media.yourdomain.com/thumbnails/st-reel-1.png`
 
 Then open the portfolio and test several MP4s, including vertical and
 horizontal videos, plus all three YouTube embeds. Confirm playback on desktop
