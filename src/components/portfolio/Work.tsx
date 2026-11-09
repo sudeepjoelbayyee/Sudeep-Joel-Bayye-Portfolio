@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
-import { Film, Play, X } from "lucide-react";
+import { Film, Play, Volume2, VolumeX, X } from "lucide-react";
 
 import {
   workItems,
@@ -40,25 +40,25 @@ function getAutoplayUrl(url: string, controls = 0) {
 
 
 /* -------------------------------------------------------
-   VIDEO PREVIEW — 5 FPS IDLE + FULL PLAYBACK ON HOVER
-   Only mounts the video when the card is near the viewport.
+   VIDEO PREVIEW — STATIC THUMBNAIL + MUTED HOVER PLAYBACK
+   The video mounts only while the card is in view and hovered.
 ------------------------------------------------------- */
 
 function VideoPreview({
   src,
   poster,
   isActive,
+  videoRef,
 }: {
   src: string;
   poster: string;
   isActive: boolean;
+  videoRef: { current: HTMLVideoElement | null };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isInView, setIsInView] = useState(false);
 
-  // Load the video only when the card is near the viewport.
+  // Observe the card so preview video is not mounted far outside the viewport.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -77,93 +77,30 @@ function VideoPreview({
     return () => observer.disconnect();
   }, []);
 
-  // Idle playback stays muted. On hover, attempt to unmute the same
-  // playing video; if the browser blocks audio autoplay, fall back muted.
+  // Hover playback is muted by default. Sound is enabled only by the
+  // dedicated sound button, which is a direct user interaction.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !isInView) return;
+    if (!video || !isInView || !isActive) return;
 
-    let cancelled = false;
+    video.muted = true;
+    video.volume = 1;
 
-    const startPlayback = async () => {
-      if (cancelled) return;
-
-      video.pause();
-
-      try {
-        video.currentTime = 0;
-      } catch {
-        // Metadata may not be ready for seeking yet.
-      }
-
-      video.muted = !isActive;
-
-      if (isActive) {
-        video.volume = 1;
-      }
-
-      try {
-        await video.play();
-      } catch {
-        if (cancelled) return;
-
-        if (isActive) {
-          video.muted = true;
-          try {
-            await video.play();
-          } catch {
-            // Browser policy or network conditions may still block playback.
-          }
-        }
-      }
-    };
-
-    if (video.readyState >= 1) {
-      void startPlayback();
-    } else {
-      video.addEventListener("loadedmetadata", startPlayback, { once: true });
+    try {
+      video.currentTime = 0;
+    } catch {
+      // The browser may not have loaded enough metadata to seek yet.
     }
 
-    return () => {
-      cancelled = true;
-      video.removeEventListener("loadedmetadata", startPlayback);
-    };
-  }, [isInView, isActive, src]);
-
-  // Draw idle preview frames at 5 FPS (one frame every 200 milliseconds).
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !isInView || isActive) return;
-
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const drawFrame = () => {
-      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-
-      const scale = Math.min(1, 640 / video.videoWidth);
-      const width = Math.round(video.videoWidth * scale);
-      const height = Math.round(video.videoHeight * scale);
-
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-
-      context.drawImage(video, 0, 0, width, height);
-    };
-
-    video.addEventListener("loadeddata", drawFrame);
-    drawFrame();
-
-    const interval = window.setInterval(drawFrame, 200);
+    void video.play().catch(() => {
+      // Keep the still thumbnail visible if autoplay is unavailable.
+    });
 
     return () => {
-      video.removeEventListener("loadeddata", drawFrame);
-      window.clearInterval(interval);
+      video.pause();
+      video.muted = true;
     };
-  }, [src, isInView, isActive]);
+  }, [isInView, isActive, src, videoRef]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-graphite">
@@ -175,31 +112,17 @@ function VideoPreview({
         className="absolute inset-0 z-0 h-full w-full object-cover"
       />
 
-      {isInView && (
-        <>
-          <video
-            ref={videoRef}
-            key={src}
-            src={src}
-            poster={poster}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className={cn(
-              "absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-200",
-              isActive ? "opacity-100" : "opacity-0",
-            )}
-          />
-
-          <canvas
-            ref={canvasRef}
-            className={cn(
-              "absolute inset-0 z-10 h-full w-full object-cover",
-              isActive ? "opacity-0" : "opacity-100",
-            )}
-          />
-        </>
+      {isInView && isActive && (
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          muted
+          loop
+          playsInline
+          preload="none"
+          className="absolute inset-0 z-20 h-full w-full object-cover"
+        />
       )}
     </div>
   );
@@ -224,6 +147,37 @@ function WorkCard({
 }) {
   const hasVideo = Boolean(item.videoUrl);
   const isVertical = item.aspect === "9:16";
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+
+  const togglePreviewSound = async () => {
+    const video = previewVideoRef.current;
+    if (!video) return;
+
+    if (soundEnabled) {
+      video.muted = true;
+      setSoundEnabled(false);
+      return;
+    }
+
+    // This runs directly from the visitor's click, allowing the browser
+    // to grant audio playback where its autoplay policy permits it.
+    video.muted = false;
+    video.volume = 1;
+
+    try {
+      await video.play();
+      setSoundEnabled(true);
+    } catch {
+      video.muted = true;
+      setSoundEnabled(false);
+    }
+  };
+
+  const handleLeave = () => {
+    setSoundEnabled(false);
+    onLeave();
+  };
 
   const directVideo = item.videoUrl
     ? isDirectVideoFile(item.videoUrl)
@@ -285,7 +239,7 @@ function WorkCard({
         isActive ? "z-10" : "z-0",
       )}
       onMouseEnter={onHover}
-      onMouseLeave={onLeave}
+      onMouseLeave={handleLeave}
       onFocusCapture={onHover}
       onBlurCapture={(event) => {
         const nextTarget = event.relatedTarget as Node | null;
@@ -294,7 +248,7 @@ function WorkCard({
           !nextTarget ||
           !event.currentTarget.contains(nextTarget)
         ) {
-          onLeave();
+          handleLeave();
         }
       }}
     >
@@ -315,7 +269,12 @@ function WorkCard({
 
           {/* Video or thumbnail */}
           {directVideo && item.videoUrl ? (
-            <VideoPreview src={item.videoUrl} poster={item.thumbnail} isActive={isActive} />
+            <VideoPreview
+              src={item.videoUrl}
+              poster={item.thumbnail}
+              isActive={isActive}
+              videoRef={previewVideoRef}
+            />
           ) : item.videoUrl && isActive ? (
   <iframe
     key={`${item.id}-${isActive}`}
@@ -411,6 +370,26 @@ function WorkCard({
 
         </div>
       </button>
+
+      {/* Separate sound control: it never triggers the card's modal button. */}
+      {directVideo && isActive && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void togglePreviewSound();
+          }}
+          aria-label={soundEnabled ? "Turn preview sound off" : "Turn preview sound on"}
+          title={soundEnabled ? "Mute preview" : "Enable preview sound"}
+          className="absolute right-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75"
+        >
+          {soundEnabled ? (
+            <Volume2 className="h-4 w-4" />
+          ) : (
+            <VolumeX className="h-4 w-4" />
+          )}
+        </button>
+      )}
     </motion.li>
   );
 }
