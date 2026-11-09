@@ -30,7 +30,7 @@ function getAutoplayUrl(url: string, controls = 0) {
   const embedUrl = new URL(url);
 
   embedUrl.searchParams.set("autoplay", "1");
-  embedUrl.searchParams.set("mute", "0");
+  embedUrl.searchParams.set("mute", controls === 0 ? "1" : "0");
   embedUrl.searchParams.set("playsinline", "1");
   embedUrl.searchParams.set("controls", String(controls));
   embedUrl.searchParams.set("rel", "0");
@@ -43,7 +43,15 @@ function getAutoplayUrl(url: string, controls = 0) {
    VIDEO PREVIEW — thumbnail-first, no network video request
 ------------------------------------------------------- */
 
-function VideoPreview({ poster }: { poster: string }) {
+function VideoPreview({
+  src,
+  poster,
+  isActive,
+}: {
+  src: string;
+  poster: string;
+  isActive: boolean;
+}) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-graphite">
       <img
@@ -51,8 +59,24 @@ function VideoPreview({ poster }: { poster: string }) {
         alt=""
         loading="lazy"
         decoding="async"
-        className="absolute inset-0 h-full w-full object-cover"
+        className={cn(
+          "absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-200",
+          isActive ? "opacity-0" : "opacity-100",
+        )}
       />
+      {isActive && (
+        <video
+          key={src}
+          src={src}
+          poster={poster}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 z-20 h-full w-full object-cover"
+        />
+      )}
     </div>
   );
 }
@@ -167,7 +191,7 @@ function WorkCard({
 
           {/* Video or thumbnail */}
           {directVideo && item.videoUrl ? (
-            <VideoPreview poster={item.thumbnail} />
+            <VideoPreview src={item.videoUrl} poster={item.thumbnail} isActive={isActive} />
           ) : item.videoUrl && isActive ? (
   <iframe
     key={`${item.id}-${isActive}`}
