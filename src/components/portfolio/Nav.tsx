@@ -96,7 +96,7 @@ gmailAccountChooserUrl.searchParams.set(
             className="flex items-center gap-3"
             aria-label={`${site.name} — back to top`}
           >
-            <span className="font-serif text-xl italic leading-none text-chrome">SJB</span>
+            <span className="whitespace-nowrap font-serif text-sm italic leading-none tracking-tight text-chrome sm:text-base md:text-lg">{site.name}</span>
             <span className="hidden h-4 w-px bg-foreground/15 sm:block" />
             <span className="hidden sm:block">
               <Timecode />
