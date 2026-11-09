@@ -218,7 +218,7 @@ function WorkCard({
                   </span>
 
                   <span className="shrink-0 rounded-full border border-white/15 bg-black/30 px-2 py-1 font-mono text-[7px] uppercase tracking-wider text-white/70 backdrop-blur-md md:text-[8px]">
-                    {hasVideo ? "CLICK TO PLAY" : "PROJECT"}
+                    {directVideo ? "CLICK TO PLAY" : hasVideo ? "HOVER TO PLAY" : "PROJECT"}
                   </span>
                 </div>
 
