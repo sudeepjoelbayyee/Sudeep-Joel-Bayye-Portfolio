@@ -148,6 +148,8 @@ function createProjects({
   filenames: string[];
   tags: string[];
 }): WorkItem[] {
+  const videoBaseUrl = (import.meta.env.VITE_R2_PUBLIC_URL ?? "").replace(/\/$/, "");
+
   return filenames.map((filename, index) => ({
     id: `${prefix}-${index + 1}`,
     title: `${title} ${String(index + 1).padStart(2, "0")}`,
@@ -155,7 +157,10 @@ function createProjects({
     description,
     aspect,
     thumbnail,
-    videoUrl: `/videos/${filename}`,
+    // Keep local fallback for development until the R2 public URL is configured.
+    videoUrl: videoBaseUrl
+      ? `${videoBaseUrl}/videos/${filename}`
+      : `/videos/${filename}`,
     tags,
   }));
 }
